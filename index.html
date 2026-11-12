@@ -457,23 +457,30 @@ function render() {
 
 // Labels try four spots around their body (right, left, above, below) and take the
 // first that doesn't cover another label or body; if none is free the label is hidden.
+// A planet's label sits outside its whole moon system, so its own moons never cross it
+// (and it doesn't jump around as they orbit).
 function drawLabels(visible, sel) {
   ctx.textBaseline = 'middle';
   const boxes = [];
+  const moonReach = new Map();   // planet → radius of its visible moon system, in px
   for (const b of visible) {
-    if (!b.isMoon) boxes.push({ x0: b.sx - b.pr, y0: b.sy - b.pr, x1: b.sx + b.pr, y1: b.sy + b.pr, owner: b });
+    boxes.push({ x0: b.sx - b.pr, y0: b.sy - b.pr, x1: b.sx + b.pr, y1: b.sy + b.pr, owner: b });
+    if (b.isMoon) {
+      moonReach.set(b.parentBody, Math.max(moonReach.get(b.parentBody) || 0, b.orbit * b.parentBody.pr + b.pr));
+    }
   }
   const rank = b => b === sel ? 0 : b.isSun ? 1 : b.isMoon ? 3 : 2;
   const order = visible.filter(b => !(b.isMoon && b.parentBody.pr < 22)).sort((a, b) => rank(a) - rank(b));
   for (const b of order) {
     ctx.font = (b.isMoon ? '11px' : '12px') + ' system-ui, sans-serif';
-    const w = ctx.measureText(b.name).width, h = 14;
-    const offX = (b.rings ? b.pr * 2.25 : b.isSun ? b.pr * 1.2 : b.pr) + 6;
-    const offY = (b.isSun ? b.pr * 1.2 : b.pr) + 11;
+    const w = ctx.measureText(b.name).width, h = 12;
+    const reach = moonReach.get(b) || 0;
+    const offX = Math.max(b.rings ? b.pr * 2.25 : b.isSun ? b.pr * 1.2 : b.pr, reach) + 6;
+    const offY = Math.max(b.isSun ? b.pr * 1.2 : b.pr, reach * sp_) + 11;
     const spots = [[b.sx + offX, b.sy], [b.sx - offX - w, b.sy], [b.sx - w / 2, b.sy - offY], [b.sx - w / 2, b.sy + offY]];
     for (const [x, y] of spots) {
       const box = { x0: x - 3, y0: y - h / 2, x1: x + w + 3, y1: y + h / 2, owner: b };
-      if (boxes.some(o => o.owner !== b && box.x0 < o.x1 && box.x1 > o.x0 && box.y0 < o.y1 && box.y1 > o.y0)) continue;
+      if (boxes.some(o => o.owner !== b && o.owner.parentBody !== b && box.x0 < o.x1 && box.x1 > o.x0 && box.y0 < o.y1 && box.y1 > o.y0)) continue;
       ctx.fillStyle = b === sel ? '#ffc857' : b.isMoon ? 'rgba(200,208,225,0.7)' : 'rgba(232,236,245,0.9)';
       ctx.fillText(b.name, x, y);
       boxes.push(box);
