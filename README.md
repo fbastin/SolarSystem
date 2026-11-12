@@ -10,3 +10,7 @@ Open `index.html` in a browser.
 - Toggles for orbits, labels, moons, and real vs. compressed distances
 
 Body sizes and moon orbit radii are exaggerated for visibility.
+
+## License
+
+[MIT](LICENSE)
