@@ -455,7 +455,7 @@ function render() {
   if (state.labels) {
     ctx.textBaseline = 'middle';
     for (const b of visible) {
-      if (b.isMoon && b.parentBody.pr < 9) continue;
+      if (b.isMoon && b.parentBody.pr < 22) continue;
       ctx.font = (b.isMoon ? '11px' : '12px') + ' system-ui, sans-serif';
       ctx.fillStyle = b === sel ? '#ffc857' : b.isMoon ? 'rgba(200,208,225,0.7)' : 'rgba(232,236,245,0.9)';
       const off = (b.rings ? b.pr * 2.25 : b.isSun ? b.pr * 1.2 : b.pr) + 6;
