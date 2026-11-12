@@ -452,14 +452,32 @@ function render() {
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(sel.sx, sel.sy, sel.pr + 5, 0, TAU); ctx.stroke();
   }
-  if (state.labels) {
-    ctx.textBaseline = 'middle';
-    for (const b of visible) {
-      if (b.isMoon && b.parentBody.pr < 22) continue;
-      ctx.font = (b.isMoon ? '11px' : '12px') + ' system-ui, sans-serif';
+  if (state.labels) drawLabels(visible, sel);
+}
+
+// Labels try four spots around their body (right, left, above, below) and take the
+// first that doesn't cover another label or body; if none is free the label is hidden.
+function drawLabels(visible, sel) {
+  ctx.textBaseline = 'middle';
+  const boxes = [];
+  for (const b of visible) {
+    if (!b.isMoon) boxes.push({ x0: b.sx - b.pr, y0: b.sy - b.pr, x1: b.sx + b.pr, y1: b.sy + b.pr, owner: b });
+  }
+  const rank = b => b === sel ? 0 : b.isSun ? 1 : b.isMoon ? 3 : 2;
+  const order = visible.filter(b => !(b.isMoon && b.parentBody.pr < 22)).sort((a, b) => rank(a) - rank(b));
+  for (const b of order) {
+    ctx.font = (b.isMoon ? '11px' : '12px') + ' system-ui, sans-serif';
+    const w = ctx.measureText(b.name).width, h = 14;
+    const offX = (b.rings ? b.pr * 2.25 : b.isSun ? b.pr * 1.2 : b.pr) + 6;
+    const offY = (b.isSun ? b.pr * 1.2 : b.pr) + 11;
+    const spots = [[b.sx + offX, b.sy], [b.sx - offX - w, b.sy], [b.sx - w / 2, b.sy - offY], [b.sx - w / 2, b.sy + offY]];
+    for (const [x, y] of spots) {
+      const box = { x0: x - 3, y0: y - h / 2, x1: x + w + 3, y1: y + h / 2, owner: b };
+      if (boxes.some(o => o.owner !== b && box.x0 < o.x1 && box.x1 > o.x0 && box.y0 < o.y1 && box.y1 > o.y0)) continue;
       ctx.fillStyle = b === sel ? '#ffc857' : b.isMoon ? 'rgba(200,208,225,0.7)' : 'rgba(232,236,245,0.9)';
-      const off = (b.rings ? b.pr * 2.25 : b.isSun ? b.pr * 1.2 : b.pr) + 6;
-      ctx.fillText(b.name, b.sx + off, b.sy);
+      ctx.fillText(b.name, x, y);
+      boxes.push(box);
+      break;
     }
   }
 }
