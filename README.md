@@ -2,7 +2,7 @@
 
 An interactive solar system simulation in a single, dependency-free HTML file.
 
-Open `index.html` in a browser.
+**[Live demo](https://fbastin.github.io/SolarSystem/)** — or open `index.html` in a browser.
 
 - Planets and Pluto follow their real Keplerian orbits, positioned for the actual date
 - Drag to rotate, scroll or pinch to zoom, click a body to follow it
