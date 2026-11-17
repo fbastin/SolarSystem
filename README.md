@@ -10,8 +10,13 @@ An interactive solar system simulation in a single, dependency-free HTML file.
 - Drag to rotate, scroll or pinch to zoom, click a body to follow it
 - Time controls: play/pause (Space), reverse (R), speed from hours to years per second
 - Toggles for orbits, labels, moons, and real vs. compressed distances
+- In English and in French: `?lang=en` or `?lang=fr` in the URL, otherwise the FR/EN button's last choice, otherwise the browser's language
 
 Body sizes and moon orbit radii are exaggerated for visibility.
+
+## Serving it on another site
+
+Copy `index.html` as is. To add something that follows the language, such as a link back to your site in the top-left panel (`#header`), add a script after the page's own: `Site.lang` is the current language (`'en'` or `'fr'`) and `Site.onLang(fn)` calls `fn` with the new one on every switch.
 
 ## License
 

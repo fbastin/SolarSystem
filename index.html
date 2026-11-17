@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Solar System</title>
+<meta name="description" content="The Sun, the planets and their moons on their real orbits: an interactive simulation of the solar system.">
 <style>
   :root {
     --panel: rgba(14, 18, 30, 0.78);
@@ -25,24 +26,28 @@
     position: fixed; background: var(--panel); border: 1px solid var(--border);
     border-radius: 12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
-  #header { top: 12px; left: 12px; padding: 10px 14px; pointer-events: none; }
-  #header h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.04em; }
+  #topLeft {
+    position: fixed; top: 12px; left: 12px; max-width: calc(100vw - 24px);
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none;
+  }
+  #header { position: relative; padding: 10px 14px; }
+  #header h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
   #date { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 13px; }
 
   #info { top: 12px; right: 12px; width: min(290px, calc(100vw - 24px)); padding: 14px 16px; display: none; }
   #info.open { display: block; }
-  #info h2 { margin: 0 0 2px; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+  #info h2 { margin: 0 0 2px; padding-right: 28px; font-size: 18px; display: flex; align-items: center; gap: 8px; }
   #info .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
   #info .kind { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
   #info p { margin: 0 0 10px; color: #c6cde0; font-size: 13px; }
   #info dl { margin: 0 0 12px; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
   #info dt { color: var(--muted); }
-  #info dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  #info dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; white-space: pre-line; }
   #close { position: absolute; top: 8px; right: 8px; }
 
   #controls {
     left: 50%; bottom: 12px; transform: translateX(-50%);
-    width: min(860px, calc(100vw - 24px)); padding: 10px 12px;
+    width: min(920px, calc(100vw - 24px)); padding: 10px 12px;
     display: flex; flex-direction: column; gap: 8px;
   }
   .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -61,11 +66,12 @@
   #play { min-width: 40px; justify-content: center; }
   #speed { flex: 1; min-width: 120px; accent-color: var(--accent); }
   #speedLabel { min-width: 104px; text-align: right; color: var(--accent); font-variant-numeric: tabular-nums; }
+  #langBtn { min-width: 40px; justify-content: center; font-weight: 600; }
   .spacer { flex: 1; }
-  #hint { position: fixed; left: 12px; top: 74px; color: var(--muted); font-size: 12px; pointer-events: none; transition: opacity 1s; }
+  #hint { color: var(--muted); font-size: 12px; transition: opacity 1s; }
   @media (max-width: 600px) {
     #hint { display: none; }
-    #info { top: 70px; }
+    #info { top: 100px; }
     button, label.toggle { padding: 5px 8px; font-size: 13px; }
   }
 </style>
@@ -73,94 +79,179 @@
 <body>
 <canvas id="view"></canvas>
 
-<div id="header" class="panel">
-  <h1>SOLAR SYSTEM</h1>
-  <div id="date"></div>
+<div id="topLeft">
+  <div id="header" class="panel">
+    <h1 data-i18n="heading">Solar System</h1>
+    <div id="date"></div>
+  </div>
+  <div id="hint" data-i18n="hint">Drag to rotate · scroll or pinch to zoom · click a body to follow it</div>
 </div>
-<div id="hint">Drag to rotate · scroll or pinch to zoom · click a body to follow it</div>
 
 <div id="info" class="panel">
-  <button id="close" title="Close">✕</button>
+  <button id="close" data-i18n-title="close" title="Close">✕</button>
   <h2><span class="dot" id="infoDot"></span><span id="infoName"></span></h2>
   <div class="kind" id="infoKind"></div>
   <p id="infoText"></p>
   <dl id="infoFacts"></dl>
-  <button id="zoomTo">Zoom to</button>
+  <button id="zoomTo" data-i18n="zoomTo">Zoom to</button>
 </div>
 
 <div id="controls" class="panel">
   <div class="row" id="bodies"></div>
   <div class="row">
-    <button id="play" title="Play / pause (Space)">❚❚</button>
-    <button id="reverse" title="Reverse time (R)">⇄ Reverse</button>
-    <input id="speed" type="range" min="-1.4" max="3.56" step="0.01" value="1" title="Simulation speed">
+    <button id="play" data-i18n-title="playTitle" title="Play / pause (Space)">❚❚</button>
+    <button id="reverse" data-i18n="reverse" data-i18n-title="reverseTitle" title="Reverse time (R)">⇄ Reverse</button>
+    <input id="speed" type="range" min="-1.4" max="3.56" step="0.01" value="1" data-i18n-title="speedTitle" title="Simulation speed">
     <span id="speedLabel"></span>
-    <button id="now" title="Jump to today">Today</button>
+    <button id="now" data-i18n="now" data-i18n-title="nowTitle" title="Jump to today">Today</button>
   </div>
   <div class="row">
-    <label class="toggle"><input type="checkbox" id="optOrbits" checked>Orbits</label>
-    <label class="toggle"><input type="checkbox" id="optLabels" checked>Labels</label>
-    <label class="toggle"><input type="checkbox" id="optMoons" checked>Moons</label>
-    <label class="toggle" title="Off: distances are compressed so every planet fits on screen"><input type="checkbox" id="optReal">Real distances</label>
+    <label class="toggle"><input type="checkbox" id="optOrbits" checked><span data-i18n="orbits">Orbits</span></label>
+    <label class="toggle"><input type="checkbox" id="optLabels" checked><span data-i18n="labels">Labels</span></label>
+    <label class="toggle"><input type="checkbox" id="optMoons" checked><span data-i18n="moons">Moons</span></label>
+    <label class="toggle" data-i18n-title="realTitle" title="Off: distances are compressed so every planet fits on screen"><input type="checkbox" id="optReal"><span data-i18n="real">Real distances</span></label>
     <span class="spacer"></span>
-    <button id="reset" title="Reset camera (Esc)">Reset view</button>
+    <button id="reset" data-i18n="reset" data-i18n-title="resetTitle" title="Reset camera (Esc)">Reset view</button>
+    <button id="langBtn" type="button">FR</button>
   </div>
 </div>
 
 <script>
 'use strict';
 
+// ───────────────────────── Language ─────────────────────────
+// ?lang=fr|en, then the choice remembered from the FR/EN button, then the browser's language.
+let lang = (() => {
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q === 'fr' || q === 'en') return q;
+  try { const s = localStorage.getItem('solarsystem-lang'); if (s === 'fr' || s === 'en') return s; } catch (e) { /* storage blocked */ }
+  return /^fr\b/i.test(navigator.language || '') ? 'fr' : 'en';
+})();
+
+// For a site that serves this page with additions of its own, such as a back link in #header:
+// Site.lang is the current language, Site.onLang(fn) calls fn('fr' | 'en') on every switch.
+const langListeners = [];
+const Site = window.Site = { lang, onLang: fn => { langListeners.push(fn); } };
+
+const NB = ' ';   // no-break space, for French typography
+const STR = {
+  en: {
+    title: 'Solar System', heading: 'Solar System',
+    hint: 'Drag to rotate · scroll or pinch to zoom · click a body to follow it',
+    close: 'Close', zoomTo: 'Zoom to',
+    playTitle: 'Play / pause (Space)', reverse: '⇄ Reverse', reverseTitle: 'Reverse time (R)',
+    speedTitle: 'Simulation speed', now: 'Today', nowTitle: 'Jump to today',
+    orbits: 'Orbits', labels: 'Labels', moons: 'Moons', real: 'Real distances',
+    realTitle: 'Off: distances are compressed so every planet fits on screen',
+    reset: 'Reset view', resetTitle: 'Reset camera (Esc)',
+    langBtn: 'FR', langLabel: 'Passer en français',
+    diameter: 'Diameter', surface: 'Surface', surfaceVal: '5,500 °C', core: 'Core', coreVal: '15 million °C',
+    age: 'Age', ageVal: '4.6 billion years', parent: 'Orbits', period: 'Orbital period', dayLen: 'Day length',
+    knownMoons: 'Known moons', distSun: 'Distance from Sun', orbSpeed: 'Orbital speed',
+    hour: 'hours', hours: 'hours', day: 'days', days: 'days', year: 'years', years: 'years',
+    retro: ' (retrograde)', au: 'AU', mkm: 'M km',
+    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  },
+  fr: {
+    title: 'Le système solaire', heading: 'Système solaire',
+    hint: 'Glisse pour faire tourner · fais défiler ou pince pour zoomer · clique sur un astre pour le suivre',
+    close: 'Fermer', zoomTo: 'Voir de près',
+    playTitle: 'Lecture / pause (Espace)', reverse: '⇄ Inverser', reverseTitle: 'Remonter le temps (R)',
+    speedTitle: 'Vitesse de la simulation', now: 'Aujourd’hui', nowTitle: 'Revenir à aujourd’hui',
+    orbits: 'Orbites', labels: 'Noms', moons: 'Lunes', real: 'Vraies distances',
+    realTitle: `Décoché${NB}: les distances sont réduites pour que toutes les planètes tiennent à l’écran`,
+    reset: 'Vue de départ', resetTitle: 'Revenir à la vue de départ (Échap)',
+    langBtn: 'EN', langLabel: 'Switch to English',
+    diameter: 'Diamètre', surface: 'Surface', surfaceVal: `5${NB}500${NB}°C`, core: 'Centre', coreVal: `15${NB}millions de °C`,
+    age: 'Âge', ageVal: `4,6${NB}milliards d’années`, parent: 'Planète', period: 'Période orbitale', dayLen: 'Durée du jour',
+    knownMoons: 'Lunes connues', distSun: 'Distance au Soleil', orbSpeed: 'Vitesse orbitale',
+    hour: 'heure', hours: 'heures', day: 'jour', days: 'jours', year: 'an', years: 'ans',
+    retro: ' (rétrograde)', au: 'UA', mkm: 'millions de km',
+    months: ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'],
+  },
+};
+const T = k => STR[lang][k];
+const tr = o => o[lang];
+// Numbers: decimal comma and spaced thousands in French.
+const num = (x, d) => lang === 'fr' ? x.toFixed(d).replace('.', ',') : x.toFixed(d);
+const fmt = n => Math.round(n).toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-US');
+// "1.5 hours" / "1,5 heure": French keeps the singular below 2.
+const unit = (n, u) => T(lang === 'fr' && n < 2 ? u : u + 's');
+
 // ───────────────────────── Data ─────────────────────────
 // Keplerian elements at J2000 (JPL approximations): a [AU], e, i, mean longitude L,
 // longitude of perihelion w, longitude of ascending node O [deg], sidereal period [days].
+const KINDS = {
+  rocky: { en: 'Terrestrial planet', fr: 'Planète rocheuse' },
+  gas:   { en: 'Gas giant',          fr: 'Géante gazeuse' },
+  ice:   { en: 'Ice giant',          fr: 'Géante de glace' },
+  dwarf: { en: 'Dwarf planet',       fr: 'Planète naine' },
+};
 const PLANETS = [
-  { name: 'Mercury', color: '#a39a90', radiusKm: 2440,  a: 0.38710,  e: 0.20563, i: 7.005,  L: 252.251, w: 77.457,  O: 48.331,  period: 87.969,
-    kind: 'Terrestrial planet', day: '58.6 days', moons: '0',
-    text: 'The smallest planet and the closest to the Sun. Its surface swings between 430 °C by day and −180 °C at night.' },
-  { name: 'Venus',   color: '#e6c88c', radiusKm: 6052,  a: 0.72333,  e: 0.00677, i: 3.395,  L: 181.980, w: 131.602, O: 76.680,  period: 224.701,
-    kind: 'Terrestrial planet', day: '243 days (retrograde)', moons: '0',
-    text: 'Wrapped in a crushing CO₂ atmosphere, Venus is the hottest planet — hot enough to melt lead.' },
-  { name: 'Earth',   color: '#4f8fdc', radiusKm: 6371,  a: 1.00000,  e: 0.01671, i: 0.000,  L: 100.464, w: 102.937, O: 0,       period: 365.256,
-    kind: 'Terrestrial planet', day: '23.9 hours', moons: '1',
-    text: 'The only world known to harbour life, with liquid water covering 71% of its surface.' },
-  { name: 'Mars',    color: '#c8623a', radiusKm: 3390,  a: 1.52371,  e: 0.09339, i: 1.850,  L: -4.553,  w: -23.944, O: 49.560,  period: 686.980,
-    kind: 'Terrestrial planet', day: '24.6 hours', moons: '2',
-    text: 'A cold desert world, home to Olympus Mons — the tallest volcano in the solar system.' },
-  { name: 'Jupiter', color: '#d9b48a', radiusKm: 69911, a: 5.20289,  e: 0.04839, i: 1.304,  L: 34.396,  w: 14.728,  O: 100.474, period: 4332.589, bands: true,
-    kind: 'Gas giant', day: '9.9 hours', moons: '95',
-    text: 'More massive than all the other planets combined. Its Great Red Spot is a storm wider than Earth.' },
-  { name: 'Saturn',  color: '#e4cf9c', radiusKm: 58232, a: 9.53668,  e: 0.05386, i: 2.486,  L: 49.954,  w: 92.599,  O: 113.662, period: 10759.22, bands: true, rings: true,
-    kind: 'Gas giant', day: '10.7 hours', moons: '274',
-    text: 'Famous for its rings of ice and rock, Saturn is the least dense planet — it would float in water.' },
-  { name: 'Uranus',  color: '#9fdde0', radiusKm: 25362, a: 19.18916, e: 0.04726, i: 0.773,  L: 313.238, w: 170.954, O: 74.017,  period: 30685.4,
-    kind: 'Ice giant', day: '17.2 hours', moons: '29',
-    text: 'An ice giant tipped on its side, rolling around the Sun with an axial tilt of 98°.' },
-  { name: 'Neptune', color: '#4a6fe0', radiusKm: 24622, a: 30.06992, e: 0.00859, i: 1.770,  L: -55.120, w: 44.965,  O: 131.784, period: 60189,
-    kind: 'Ice giant', day: '16.1 hours', moons: '16',
-    text: 'The most distant planet, with the fastest winds in the solar system — over 2,000 km/h.' },
-  { name: 'Pluto',   color: '#c2a892', radiusKm: 1188,  a: 39.48212, e: 0.24883, i: 17.140, L: 238.929, w: 224.069, O: 110.304, period: 90560,
-    kind: 'Dwarf planet', day: '6.4 days', moons: '5',
-    text: 'A dwarf planet of the Kuiper belt on a tilted, eccentric orbit that sometimes brings it closer than Neptune.' },
+  { id: 'Mercury', name: { en: 'Mercury', fr: 'Mercure' }, color: '#a39a90', radiusKm: 2440,  a: 0.38710,  e: 0.20563, i: 7.005,  L: 252.251, w: 77.457,  O: 48.331,  period: 87.969,
+    type: 'rocky', day: [58.6, 'day'], moons: '0',
+    text: { en: 'The smallest planet and the closest to the Sun. Its surface swings between 430 °C by day and −180 °C at night.',
+            fr: `La plus petite planète, et la plus proche du Soleil. Sa surface passe de 430${NB}°C le jour à −180${NB}°C la nuit.` } },
+  { id: 'Venus',   name: { en: 'Venus', fr: 'Vénus' }, color: '#e6c88c', radiusKm: 6052,  a: 0.72333,  e: 0.00677, i: 3.395,  L: 181.980, w: 131.602, O: 76.680,  period: 224.701,
+    type: 'rocky', day: [243, 'day', true], moons: '0',
+    text: { en: 'Wrapped in a crushing CO₂ atmosphere, Venus is the hottest planet — hot enough to melt lead.',
+            fr: 'Enveloppée d’une atmosphère de CO₂ écrasante, Vénus est la planète la plus chaude — assez chaude pour faire fondre le plomb.' } },
+  { id: 'Earth',   name: { en: 'Earth', fr: 'Terre' }, of: 'de la Terre', color: '#4f8fdc', radiusKm: 6371,  a: 1.00000,  e: 0.01671, i: 0.000,  L: 100.464, w: 102.937, O: 0,       period: 365.256,
+    type: 'rocky', day: [23.9, 'hour'], moons: '1',
+    text: { en: 'The only world known to harbour life, with liquid water covering 71% of its surface.',
+            fr: `Le seul monde où l’on sait qu’il y a de la vie. L’eau liquide couvre 71${NB}% de sa surface.` } },
+  { id: 'Mars',    name: { en: 'Mars', fr: 'Mars' }, color: '#c8623a', radiusKm: 3390,  a: 1.52371,  e: 0.09339, i: 1.850,  L: -4.553,  w: -23.944, O: 49.560,  period: 686.980,
+    type: 'rocky', day: [24.6, 'hour'], moons: '2',
+    text: { en: 'A cold desert world, home to Olympus Mons — the tallest volcano in the solar system.',
+            fr: 'Un désert glacé, où se dresse l’Olympus Mons — le plus haut volcan du système solaire.' } },
+  { id: 'Jupiter', name: { en: 'Jupiter', fr: 'Jupiter' }, of: 'de Jupiter', color: '#d9b48a', radiusKm: 69911, a: 5.20289,  e: 0.04839, i: 1.304,  L: 34.396,  w: 14.728,  O: 100.474, period: 4332.589, bands: true,
+    type: 'gas', day: [9.9, 'hour'], moons: '95',
+    text: { en: 'More massive than all the other planets combined. Its Great Red Spot is a storm wider than Earth.',
+            fr: 'Plus massive que toutes les autres planètes réunies. Sa Grande Tache rouge est une tempête plus large que la Terre.' } },
+  { id: 'Saturn',  name: { en: 'Saturn', fr: 'Saturne' }, of: 'de Saturne', color: '#e4cf9c', radiusKm: 58232, a: 9.53668,  e: 0.05386, i: 2.486,  L: 49.954,  w: 92.599,  O: 113.662, period: 10759.22, bands: true, rings: true,
+    type: 'gas', day: [10.7, 'hour'], moons: '274',
+    text: { en: 'Famous for its rings of ice and rock, Saturn is the least dense planet — it would float in water.',
+            fr: 'Célèbre pour ses anneaux de glace et de roche, Saturne est la planète la moins dense — elle flotterait sur l’eau.' } },
+  { id: 'Uranus',  name: { en: 'Uranus', fr: 'Uranus' }, color: '#9fdde0', radiusKm: 25362, a: 19.18916, e: 0.04726, i: 0.773,  L: 313.238, w: 170.954, O: 74.017,  period: 30685.4,
+    type: 'ice', day: [17.2, 'hour'], moons: '29',
+    text: { en: 'An ice giant tipped on its side, rolling around the Sun with an axial tilt of 98°.',
+            fr: 'Une géante de glace couchée sur le côté, qui roule autour du Soleil avec un axe penché de 98°.' } },
+  { id: 'Neptune', name: { en: 'Neptune', fr: 'Neptune' }, color: '#4a6fe0', radiusKm: 24622, a: 30.06992, e: 0.00859, i: 1.770,  L: -55.120, w: 44.965,  O: 131.784, period: 60189,
+    type: 'ice', day: [16.1, 'hour'], moons: '16',
+    text: { en: 'The most distant planet, with the fastest winds in the solar system — over 2,000 km/h.',
+            fr: `La planète la plus éloignée, avec les vents les plus rapides du système solaire — plus de 2${NB}000${NB}km/h.` } },
+  { id: 'Pluto',   name: { en: 'Pluto', fr: 'Pluton' }, color: '#c2a892', radiusKm: 1188,  a: 39.48212, e: 0.24883, i: 17.140, L: 238.929, w: 224.069, O: 110.304, period: 90560,
+    type: 'dwarf', day: [6.4, 'day'], moons: '5',
+    text: { en: 'A dwarf planet of the Kuiper belt on a tilted, eccentric orbit that sometimes brings it closer than Neptune.',
+            fr: 'Une planète naine de la ceinture de Kuiper. Son orbite penchée et allongée l’amène parfois plus près du Soleil que Neptune.' } },
 ];
 
 // Moons: orbit radius is in multiples of the parent's drawn radius (not to scale).
 const MOONS = [
-  { name: 'Moon',     parent: 'Earth',   color: '#c9c9c9', radiusKm: 1737, orbit: 2.8, period: 27.322,
-    text: 'Earth\'s only natural satellite, and the only other world humans have walked on.' },
-  { name: 'Io',       parent: 'Jupiter', color: '#e8d26a', radiusKm: 1822, orbit: 1.6, period: 1.769,
-    text: 'The most volcanically active body known, with hundreds of erupting volcanoes.' },
-  { name: 'Europa',   parent: 'Jupiter', color: '#d8cdb8', radiusKm: 1561, orbit: 2.1, period: 3.551,
-    text: 'An icy shell hides a global salt-water ocean — a prime target in the search for life.' },
-  { name: 'Ganymede', parent: 'Jupiter', color: '#a89c8c', radiusKm: 2634, orbit: 2.7, period: 7.155,
-    text: 'The largest moon in the solar system — bigger than Mercury.' },
-  { name: 'Callisto', parent: 'Jupiter', color: '#7d7468', radiusKm: 2410, orbit: 3.4, period: 16.689,
-    text: 'One of the most heavily cratered surfaces known, ancient and geologically quiet.' },
-  { name: 'Titan',    parent: 'Saturn',  color: '#e0a94e', radiusKm: 2575, orbit: 3.1, period: 15.945,
-    text: 'The only moon with a thick atmosphere, and lakes of liquid methane on its surface.' },
+  { id: 'Moon',     name: { en: 'Moon', fr: 'Lune' }, parent: 'Earth',   color: '#c9c9c9', radiusKm: 1737, orbit: 2.8, period: 27.322,
+    text: { en: 'Earth\'s only natural satellite, and the only other world humans have walked on.',
+            fr: 'Le seul satellite naturel de la Terre, et le seul autre monde où des humains ont marché.' } },
+  { id: 'Io',       name: { en: 'Io', fr: 'Io' }, parent: 'Jupiter', color: '#e8d26a', radiusKm: 1822, orbit: 1.6, period: 1.769,
+    text: { en: 'The most volcanically active body known, with hundreds of erupting volcanoes.',
+            fr: 'L’astre le plus volcanique que l’on connaisse, avec des centaines de volcans en éruption.' } },
+  { id: 'Europa',   name: { en: 'Europa', fr: 'Europe' }, parent: 'Jupiter', color: '#d8cdb8', radiusKm: 1561, orbit: 2.1, period: 3.551,
+    text: { en: 'An icy shell hides a global salt-water ocean — a prime target in the search for life.',
+            fr: 'Sous sa croûte de glace se cache un océan d’eau salée qui l’entoure tout entière — un des meilleurs endroits où chercher la vie.' } },
+  { id: 'Ganymede', name: { en: 'Ganymede', fr: 'Ganymède' }, parent: 'Jupiter', color: '#a89c8c', radiusKm: 2634, orbit: 2.7, period: 7.155,
+    text: { en: 'The largest moon in the solar system — bigger than Mercury.',
+            fr: 'La plus grosse lune du système solaire — plus grosse que Mercure.' } },
+  { id: 'Callisto', name: { en: 'Callisto', fr: 'Callisto' }, parent: 'Jupiter', color: '#7d7468', radiusKm: 2410, orbit: 3.4, period: 16.689,
+    text: { en: 'One of the most heavily cratered surfaces known, ancient and geologically quiet.',
+            fr: 'Une des surfaces les plus criblées de cratères que l’on connaisse, très ancienne et sans activité géologique.' } },
+  { id: 'Titan',    name: { en: 'Titan', fr: 'Titan' }, parent: 'Saturn',  color: '#e0a94e', radiusKm: 2575, orbit: 3.1, period: 15.945,
+    text: { en: 'The only moon with a thick atmosphere, and lakes of liquid methane on its surface.',
+            fr: 'La seule lune qui a une atmosphère épaisse, avec des lacs de méthane liquide à sa surface.' } },
 ];
 
-const SUN = { name: 'Sun', color: '#ffc94a', radiusKm: 696350, isSun: true, kind: 'G-type main-sequence star',
-  text: 'The Sun holds 99.86% of the solar system\'s mass. Its light takes about 8 minutes to reach Earth.' };
+const SUN = { id: 'Sun', name: { en: 'Sun', fr: 'Soleil' }, color: '#ffc94a', radiusKm: 696350, isSun: true,
+  kind: { en: 'G-type main-sequence star', fr: 'Étoile naine jaune (type G)' },
+  text: { en: 'The Sun holds 99.86% of the solar system\'s mass. Its light takes about 8 minutes to reach Earth.',
+          fr: `Le Soleil contient 99,86${NB}% de la masse du système solaire. Sa lumière met environ 8${NB}minutes pour arriver jusqu’à la Terre.` } };
 
 const D2R = Math.PI / 180, TAU = Math.PI * 2;
 const AU_KM = 149597870.7;
@@ -178,12 +269,14 @@ for (const p of PLANETS) {
   p.minPx = 2.5;
   p.pos = [0, 0, 0];
   p.r = p.a;
+  p.kind = KINDS[p.type];
 }
 SUN.drawR = 0.28; SUN.minPx = 4; SUN.pos = [0, 0, 0];
 for (const m of MOONS) {
-  m.parentBody = PLANETS.find(p => p.name === m.parent);
+  m.parentBody = PLANETS.find(p => p.id === m.parent);
   m.drawR = m.parentBody.drawR * Math.max(0.16, Math.min(0.3, m.radiusKm / m.parentBody.radiusKm));
-  m.minPx = 1.2; m.isMoon = true; m.kind = 'Moon of ' + m.parent;
+  m.minPx = 1.2; m.isMoon = true;
+  m.kind = { en: 'Moon of ' + m.parentBody.name.en, fr: 'Satellite ' + m.parentBody.of };
   m.phase = Math.random() * TAU;
   m.pos = [0, 0, 0];
 }
@@ -472,8 +565,9 @@ function drawLabels(visible, sel) {
   const rank = b => b === sel ? 0 : b.isSun ? 1 : b.isMoon ? 3 : 2;
   const order = visible.filter(b => !(b.isMoon && b.parentBody.pr < 22)).sort((a, b) => rank(a) - rank(b));
   for (const b of order) {
+    const name = tr(b.name);
     ctx.font = (b.isMoon ? '11px' : '12px') + ' system-ui, sans-serif';
-    const w = ctx.measureText(b.name).width, h = 12;
+    const w = ctx.measureText(name).width, h = 12;
     const reach = moonReach.get(b) || 0;
     const offX = Math.max(b.rings ? b.pr * 2.25 : b.isSun ? b.pr * 1.2 : b.pr, reach) + 6;
     const offY = Math.max(b.isSun ? b.pr * 1.2 : b.pr, reach * sp_) + 11;
@@ -482,7 +576,7 @@ function drawLabels(visible, sel) {
       const box = { x0: x - 3, y0: y - h / 2, x1: x + w + 3, y1: y + h / 2, owner: b };
       if (boxes.some(o => o.owner !== b && o.owner.parentBody !== b && box.x0 < o.x1 && box.x1 > o.x0 && box.y0 < o.y1 && box.y1 > o.y0)) continue;
       ctx.fillStyle = b === sel ? '#ffc857' : b.isMoon ? 'rgba(200,208,225,0.7)' : 'rgba(232,236,245,0.9)';
-      ctx.fillText(b.name, x, y);
+      ctx.fillText(name, x, y);
       boxes.push(box);
       break;
     }
@@ -490,45 +584,53 @@ function drawLabels(visible, sel) {
 }
 
 // ───────────────────────── UI ─────────────────────────
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function formatDate(days) {
   const d = new Date(J2000_MS + days * 864e5);
   if (isNaN(d)) return '—';
   const p2 = n => String(n).padStart(2, '0');
-  let s = `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-  if (state.speed < 2) s += `  ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())} UTC`;
+  let s = `${d.getUTCDate()} ${T('months')[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  if (state.speed < 2) {
+    s += lang === 'fr' ? `  ${d.getUTCHours()} h ${p2(d.getUTCMinutes())} UTC`
+                       : `  ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())} UTC`;
+  }
   return s;
 }
 function formatSpeed(v) {
-  if (v < 1) return (v * 24).toFixed(1) + ' hours/s';
-  if (v < 365.25) return (v < 10 ? v.toFixed(1) : Math.round(v)) + ' days/s';
-  return (v / 365.25).toFixed(1) + ' years/s';
+  if (v < 1) return `${num(v * 24, 1)} ${unit(v * 24, 'hour')}/s`;
+  if (v < 365.25) return `${v < 10 ? num(v, 1) : Math.round(v)} ${unit(v, 'day')}/s`;
+  return `${num(v / 365.25, 1)} ${unit(v / 365.25, 'year')}/s`;
 }
-const fmt = n => Math.round(n).toLocaleString('en-US');
+function formatDay([v, u, retro]) {
+  return `${num(v, Number.isInteger(v) ? 0 : 1)}${NB}${unit(v, u)}${retro ? T('retro') : ''}`;
+}
 
 function select(body) {
   const b = body || SUN;
   // Keep the camera where it is and let the offset decay, for a smooth glide.
   state.offset = [state.target[0] - b.pos[0], state.target[1] - b.pos[1], state.target[2] - b.pos[2]];
   state.selected = b;
-  for (const btn of $('bodies').children) btn.classList.toggle('active', btn.dataset.name === b.name);
-  $('infoName').textContent = b.name;
-  $('infoDot').style.background = b.color;
-  $('infoKind').textContent = b.kind;
-  $('infoText').textContent = b.text;
+  for (const btn of $('bodies').children) btn.classList.toggle('active', btn.dataset.id === b.id);
+  showInfo(b);
   $('info').classList.add('open');
+}
+function showInfo(b) {
+  $('infoName').textContent = tr(b.name);
+  $('infoDot').style.background = b.color;
+  $('infoKind').textContent = tr(b.kind);
+  $('infoText').textContent = tr(b.text);
   buildFacts(b);
 }
 
 let liveDist = null, liveSpeed = null;
 function buildFacts(b) {
-  const rows = [['Diameter', fmt(b.radiusKm * 2) + ' km']];
-  if (b.isSun) rows.push(['Surface', '5,500 °C'], ['Core', '15 million °C'], ['Age', '4.6 billion years']);
-  else if (b.isMoon) rows.push(['Orbits', b.parent], ['Orbital period', b.period.toFixed(2) + ' days']);
+  const rows = [[T('diameter'), fmt(b.radiusKm * 2) + NB + 'km']];
+  if (b.isSun) rows.push([T('surface'), T('surfaceVal')], [T('core'), T('coreVal')], [T('age'), T('ageVal')]);
+  else if (b.isMoon) rows.push([T('parent'), tr(b.parentBody.name)], [T('period'), num(b.period, 2) + NB + unit(b.period, 'day')]);
   else {
-    rows.push(['Orbital period', b.period < 1000 ? b.period.toFixed(1) + ' days' : (b.period / 365.25).toFixed(1) + ' years'],
-              ['Day length', b.day], ['Known moons', b.moons],
-              ['Distance from Sun', ''], ['Orbital speed', '']);
+    const years = b.period / 365.25;
+    rows.push([T('period'), b.period < 1000 ? num(b.period, 1) + NB + unit(b.period, 'day') : num(years, 1) + NB + unit(years, 'year')],
+              [T('dayLen'), formatDay(b.day)], [T('knownMoons'), b.moons],
+              [T('distSun'), ''], [T('orbSpeed'), '']);
   }
   const dl = $('infoFacts');
   dl.textContent = '';
@@ -536,24 +638,25 @@ function buildFacts(b) {
   for (const [k, v] of rows) {
     const dt = document.createElement('dt'), dd = document.createElement('dd');
     dt.textContent = k; dd.textContent = v;
-    if (k === 'Distance from Sun') liveDist = dd;
-    if (k === 'Orbital speed') liveSpeed = dd;
+    if (k === T('distSun')) liveDist = dd;
+    if (k === T('orbSpeed')) liveSpeed = dd;
     dl.append(dt, dd);
   }
 }
 function updateLiveFacts() {
   const b = state.selected;
   if (!liveDist || !b || !b.a) return;
-  liveDist.textContent = `${b.r.toFixed(3)} AU · ${fmt(b.r * AU_KM / 1e6)} M km`;
-  liveSpeed.textContent = (29.7847 * Math.sqrt(2 / b.r - 1 / b.a)).toFixed(2) + ' km/s';
+  // "0.985 AU · 147 M km" fits on one line; "147 millions de km" goes on a line of its own.
+  liveDist.textContent = `${num(b.r, 3)}${NB}${T('au')}${lang === 'fr' ? '\n' : ' · '}${fmt(b.r * AU_KM / 1e6)}${NB}${T('mkm')}`;
+  liveSpeed.textContent = num(29.7847 * Math.sqrt(2 / b.r - 1 / b.a), 2) + NB + 'km/s';
 }
 
 for (const b of [SUN, ...PLANETS]) {
   const btn = document.createElement('button');
-  btn.dataset.name = b.name;
-  const dot = document.createElement('span');
+  btn.dataset.id = b.id;
+  const dot = document.createElement('span'), label = document.createElement('span');
   dot.className = 'dot'; dot.style.background = b.color;
-  btn.append(dot, b.name);
+  btn.append(dot, label);
   btn.onclick = () => select(b);
   $('bodies').append(btn);
 }
@@ -566,11 +669,30 @@ function resetView() {
   select(SUN); $('info').classList.remove('open');
 }
 
+// Switching language keeps the view, the date and the selection as they are.
+function setLang(l) {
+  lang = l;
+  document.documentElement.lang = l;
+  document.title = T('title');
+  try { localStorage.setItem('solarsystem-lang', l); } catch (e) { /* storage blocked */ }
+  try { history.replaceState(null, '', '?lang=' + l + location.hash); } catch (e) { /* file:// pages */ }
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = T(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = T(el.dataset.i18nTitle); });
+  for (const btn of $('bodies').children) btn.lastChild.textContent = tr(BODIES.find(b => b.id === btn.dataset.id).name);
+  const lb = $('langBtn');
+  lb.textContent = T('langBtn'); lb.title = T('langLabel'); lb.setAttribute('aria-label', T('langLabel'));
+  setSpeed();
+  showInfo(state.selected);
+  Site.lang = l;
+  langListeners.forEach(fn => fn(l));
+}
+
 $('play').onclick = () => setPlaying(!state.playing);
 $('reverse').onclick = () => setDir(-state.dir);
 $('speed').oninput = setSpeed;
 $('now').onclick = () => { state.days = (Date.now() - J2000_MS) / 864e5; };
 $('reset').onclick = resetView;
+$('langBtn').onclick = () => setLang(lang === 'fr' ? 'en' : 'fr');
 $('close').onclick = () => $('info').classList.remove('open');
 $('zoomTo').onclick = () => {
   const b = state.selected;
@@ -673,7 +795,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-setSpeed();
+setLang(lang);
 updateBodies();
 select(SUN);
 $('info').classList.remove('open');
