@@ -69,10 +69,39 @@
   #langBtn { min-width: 40px; justify-content: center; font-weight: 600; }
   .spacer { flex: 1; }
   #hint { color: var(--muted); font-size: 12px; transition: opacity 1s; }
+
+  /* Lesson: a panel in place of the info panel, with steps that drive the view. */
+  #lesson {
+    top: 12px; right: 12px; width: min(350px, calc(100vw - 24px)); max-height: calc(100vh - 190px);
+    overflow-y: auto; padding: 14px 16px; display: none;
+  }
+  body.lesson #lesson { display: block; }
+  body.lesson #info { display: none; }
+  #lessonStep { color: var(--accent); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+  #lesson h2 { margin: 0 0 8px; padding-right: 28px; font-size: 18px; outline: none; }
+  #lesson p { margin: 0 0 9px; color: #c6cde0; font-size: 13.5px; line-height: 1.5; }
+  #lesson b { color: var(--text); }
+  #lessonClose { position: absolute; top: 8px; right: 8px; }
+  #lessonPick { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 9px; }
+  #lessonPick:empty { display: none; }
+  #lessonPick button { padding: 3px 8px; font-size: 12.5px; }
+  #lessonPick button .dot { width: 8px; height: 8px; border-radius: 50%; }
+  #lessonLive { color: var(--accent); font-size: 13px; line-height: 1.45; min-height: 1.45em; }
+  #lessonLive:empty { display: none; }
+  #lessonNav { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  #lessonDots { flex: 1; display: flex; justify-content: center; gap: 6px; }
+  #lessonDots span { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
+  #lessonDots span.on { background: var(--accent); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button:disabled:hover { background: rgba(255, 255, 255, 0.07); }
+
   @media (max-width: 600px) {
     #hint { display: none; }
     #info { top: 100px; }
     button, label.toggle { padding: 5px 8px; font-size: 13px; }
+    #lesson { top: 8px; right: 8px; width: calc(100vw - 16px); max-height: 46vh; padding: 12px 14px; }
+    #lesson p { font-size: 13px; }
+    body.lesson #topLeft, body.lesson #bodies { display: none; }
   }
 </style>
 </head>
@@ -96,6 +125,20 @@
   <button id="zoomTo" data-i18n="zoomTo">Zoom to</button>
 </div>
 
+<div id="lesson" class="panel" role="region" aria-labelledby="lessonTitle">
+  <button id="lessonClose" data-i18n-title="lessonClose" title="Close the lesson">✕</button>
+  <div id="lessonStep"></div>
+  <h2 id="lessonTitle" tabindex="-1"></h2>
+  <div id="lessonText"></div>
+  <div id="lessonPick"></div>
+  <div id="lessonLive"></div>
+  <div id="lessonNav">
+    <button id="lessonPrev" type="button" data-i18n="lessonPrev">← Back</button>
+    <span id="lessonDots" aria-hidden="true"></span>
+    <button id="lessonNext" type="button">Next →</button>
+  </div>
+</div>
+
 <div id="controls" class="panel">
   <div class="row" id="bodies"></div>
   <div class="row">
@@ -111,7 +154,8 @@
     <label class="toggle"><input type="checkbox" id="optMoons" checked><span data-i18n="moons">Moons</span></label>
     <label class="toggle" data-i18n-title="realTitle" title="Off: distances are compressed so every planet fits on screen"><input type="checkbox" id="optReal"><span data-i18n="real">Real distances</span></label>
     <span class="spacer"></span>
-    <button id="reset" data-i18n="reset" data-i18n-title="resetTitle" title="Reset camera (Esc)">Reset view</button>
+    <button id="lessonBtn" type="button" data-i18n="lessonBtn" data-i18n-title="lessonBtnTitle" title="A step-by-step lesson: what an orbit is, and the plane of an orbit">Lesson: orbits</button>
+    <button id="reset"data-i18n="reset" data-i18n-title="resetTitle" title="Reset camera (Esc)">Reset view</button>
     <button id="langBtn" type="button">FR</button>
   </div>
 </div>
@@ -147,10 +191,19 @@ const STR = {
     langBtn: 'FR', langLabel: 'Passer en français',
     diameter: 'Diameter', surface: 'Surface', surfaceVal: '5,500 °C', core: 'Core', coreVal: '15 million °C',
     age: 'Age', ageVal: '4.6 billion years', parent: 'Orbits', period: 'Orbital period', dayLen: 'Day length',
-    knownMoons: 'Known moons', distSun: 'Distance from Sun', orbSpeed: 'Orbital speed',
+    knownMoons: 'Known moons', distSun: 'Distance from Sun', orbSpeed: 'Orbital speed', incl: 'Orbit inclination',
     hour: 'hours', hours: 'hours', day: 'days', days: 'days', year: 'years', years: 'years',
     retro: ' (retrograde)', au: 'AU', mkm: 'M km',
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    lessonBtn: 'Lesson: orbits', lessonBtnTitle: 'A step-by-step lesson: what an orbit is, and the plane of an orbit',
+    lessonClose: 'Close the lesson', lessonStep: 'Lesson · step {n} of {N}',
+    lessonPrev: '← Back', lessonNext: 'Next →', lessonEnd: 'Finish',
+    tilted: '{p}: orbit tilted {i} to the ecliptic.',
+    lean: ['the North Pole leans toward the Sun.', 'the North Pole leans a little toward the Sun.',
+           'neither pole leans toward the Sun.',
+           'the South Pole leans a little toward the Sun.', 'the South Pole leans toward the Sun.'],
+    seasons: ['Spring in the north, autumn in the south.', 'Summer in the north, winter in the south.',
+              'Autumn in the north, spring in the south.', 'Winter in the north, summer in the south.'],
   },
   fr: {
     title: 'Le système solaire', heading: 'Système solaire',
@@ -164,10 +217,19 @@ const STR = {
     langBtn: 'EN', langLabel: 'Switch to English',
     diameter: 'Diamètre', surface: 'Surface', surfaceVal: `5${NB}500${NB}°C`, core: 'Centre', coreVal: `15${NB}millions de °C`,
     age: 'Âge', ageVal: `4,6${NB}milliards d’années`, parent: 'Planète', period: 'Période orbitale', dayLen: 'Durée du jour',
-    knownMoons: 'Lunes connues', distSun: 'Distance au Soleil', orbSpeed: 'Vitesse orbitale',
+    knownMoons: 'Lunes connues', distSun: 'Distance au Soleil', orbSpeed: 'Vitesse orbitale', incl: 'Inclinaison de l’orbite',
     hour: 'heure', hours: 'heures', day: 'jour', days: 'jours', year: 'an', years: 'ans',
     retro: ' (rétrograde)', au: 'UA', mkm: 'millions de km',
     months: ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'],
+    lessonBtn: 'Leçon : les orbites', lessonBtnTitle: 'Une leçon pas à pas : ce qu’est une orbite, et le plan d’une orbite',
+    lessonClose: 'Fermer la leçon', lessonStep: 'Leçon · étape {n} sur {N}',
+    lessonPrev: '← Précédent', lessonNext: 'Suivant →', lessonEnd: 'Terminer',
+    tilted: `{p}${NB}: orbite penchée de {i} sur l’écliptique.`,
+    lean: ['le pôle Nord penche vers le Soleil.', 'le pôle Nord penche un peu vers le Soleil.',
+           'aucun pôle ne penche vers le Soleil.',
+           'le pôle Sud penche un peu vers le Soleil.', 'le pôle Sud penche vers le Soleil.'],
+    seasons: ['C’est le printemps au nord, l’automne au sud.', 'C’est l’été au nord, l’hiver au sud.',
+              'C’est l’automne au nord, le printemps au sud.', 'C’est l’hiver au nord, l’été au sud.'],
   },
 };
 const T = k => STR[lang][k];
@@ -322,7 +384,19 @@ const state = {
   yaw: 0.6, pitch: 38 * D2R, dist: 15,
   selected: SUN, offset: [0, 0, 0], target: [0, 0, 0],
 };
+// The lesson (see "Lesson" below): its step, and what that step draws on top of the usual view.
+const lesson = {
+  on: false, step: 0, saved: null, pick: 'Pluto', size: 1,
+  focus: null,    // ids of the orbits to bring forward, the others fade; null: all as usual
+  planes: [],     // ids of the orbits whose plane is filled in
+  split: [],      // ids of the orbits drawn solid above the ecliptic and dashed below, with their nodes
+  grid: false,    // the ecliptic as a grid
+  axis: false,    // Earth's spin axis and the perpendicular to its orbit
+};
 let W = 0, H = 0, DPR = 1, F = 1;
+// Screen point the camera target is drawn at: the middle of the window, or of the part the
+// lesson panel leaves free. CX and CY glide toward goalX and goalY.
+let CX = 0, CY = 0, goalX = 0, goalY = 0;
 const DEFAULT_DIST = { false: 15, true: 78 };
 
 // Distance mapping: compressed mode scales each orbit uniformly by 1/sqrt(a),
@@ -333,7 +407,9 @@ function mapPos(v, a) {
   v[0] *= f; v[1] *= f; v[2] *= f;
   return v;
 }
-const sizeK = () => state.real ? 0.35 : 1;
+// Body sizes are exaggerated; real distances shrink them, and so do the lesson's close-ups.
+let lessonSize = 1;   // glides toward lesson.size while the lesson is open, toward 1 otherwise
+const sizeK = () => (state.real ? 0.35 : 1) * lessonSize;
 
 let orbitPaths = [];
 function buildOrbitPaths() {
@@ -381,8 +457,8 @@ function project(x, y, z) {
   const cd = state.dist + depth;
   if (cd < 0.01) return null;
   const s = F / cd;
-  proj.x = W / 2 + x1 * s;
-  proj.y = H / 2 - (y1 * sp_ + z * cp_) * s;
+  proj.x = CX + x1 * s;
+  proj.y = CY - (y1 * sp_ + z * cp_) * s;
   proj.s = s; proj.d = depth;
   return proj;
 }
@@ -392,6 +468,7 @@ function resize() {
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
   F = 1.2 * Math.min(W, H);
+  updateViewCenter(true);
 }
 window.addEventListener('resize', resize);
 resize();
@@ -410,27 +487,137 @@ function drawStars() {
   }
 }
 
+// Traces an orbit's path; keep(z) picks the points to draw (all if omitted).
+function traceOrbit(pts, keep) {
+  ctx.beginPath();
+  let pen = false;
+  for (let k = 0; k < pts.length; k += 3) {
+    const q = keep && !keep(pts[k + 2]) ? null : project(pts[k], pts[k + 1], pts[k + 2]);
+    if (!q) { pen = false; continue; }
+    if (pen) ctx.lineTo(q.x, q.y); else { ctx.moveTo(q.x, q.y); pen = true; }
+  }
+}
+
 function drawOrbits() {
-  ctx.lineWidth = 1;
+  const focus = lesson.on && lesson.focus;
   PLANETS.forEach((p, idx) => {
-    const pts = orbitPaths[idx];
+    const pts = orbitPaths[idx], lit = focus && focus.includes(p.id);
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = lit ? 2 : 1;
+    ctx.globalAlpha = focus ? (lit ? 0.95 : 0.1) : state.selected === p ? 0.75 : 0.28;
+    if (lesson.on && lesson.split.includes(p.id)) {
+      // Above the ecliptic solid, below dashed.
+      traceOrbit(pts, z => z >= 0); ctx.stroke();
+      ctx.setLineDash([5, 5]);
+      traceOrbit(pts, z => z < 0); ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      traceOrbit(pts); ctx.stroke();
+    }
+  });
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 1;
+}
+
+// When a lesson step is about some orbits only, the other bodies and the asteroid belt are
+// dimmed, and left unnamed.
+const narrow = () => lesson.on && lesson.focus && lesson.focus.length < PLANETS.length;
+const faded = b => narrow() && !b.isSun && !lesson.focus.includes(b.isMoon ? b.parentBody.id : b.id);
+
+// The plane of an orbit, filled in: a flat disc that thins to a line when seen edge-on.
+function drawPlanes() {
+  for (const id of lesson.planes) {
+    const idx = PLANETS.findIndex(p => p.id === id), pts = orbitPaths[idx];
     ctx.beginPath();
-    let pen = false;
     for (let k = 0; k < pts.length; k += 3) {
       const q = project(pts[k], pts[k + 1], pts[k + 2]);
+      if (!q) return;
+      if (k) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y);
+    }
+    ctx.fillStyle = PLANETS[idx].color;
+    ctx.globalAlpha = 0.2;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// The ecliptic (the plane of Earth's orbit) as a square grid centred on the Sun.
+function drawGrid() {
+  const ext = state.real ? 48 : 8, n = 16, seg = 12;
+  ctx.beginPath();
+  const line = (x0, y0, x1, y1) => {
+    let pen = false;
+    for (let j = 0; j <= seg; j++) {
+      const t = j / seg, q = project(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 0);
       if (!q) { pen = false; continue; }
       if (pen) ctx.lineTo(q.x, q.y); else { ctx.moveTo(q.x, q.y); pen = true; }
     }
-    const sel = state.selected === p;
-    ctx.strokeStyle = p.color;
-    ctx.globalAlpha = sel ? 0.75 : 0.28;
-    ctx.stroke();
-  });
-  ctx.globalAlpha = 1;
+  };
+  for (let k = 0; k <= n; k++) {
+    const c = -ext + 2 * ext * k / n;
+    line(c, -ext, c, ext); line(-ext, c, ext, c);
+  }
+  ctx.strokeStyle = 'rgba(150, 180, 255, 0.16)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+// The nodes: where a tilted orbit crosses the ecliptic.
+function drawNodes() {
+  for (const id of lesson.split) {
+    const pts = orbitPaths[PLANETS.findIndex(p => p.id === id)];
+    for (let k = 0; k + 5 < pts.length; k += 3) {
+      const z0 = pts[k + 2], z1 = pts[k + 5];
+      if ((z0 < 0) === (z1 < 0)) continue;
+      const t = z0 / (z0 - z1);
+      const q = project(pts[k] + (pts[k + 3] - pts[k]) * t, pts[k + 1] + (pts[k + 4] - pts[k + 1]) * t, 0);
+      if (!q) continue;
+      ctx.beginPath(); ctx.arc(q.x, q.y, 4.5, 0, TAU);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = '#04060c'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+  }
+  ctx.lineWidth = 1;
+}
+
+// Earth's spin axis, which keeps the same direction in space (23.44° from the perpendicular
+// to the orbit, leaning toward the Sun at the June solstice), and that perpendicular, dashed.
+const OBLIQUITY = 23.44 * D2R;
+const AXIS = [0, Math.sin(OBLIQUITY), Math.cos(OBLIQUITY)];
+function drawAxis() {
+  const e = PLANETS.find(p => p.id === 'Earth');
+  if (!e.onScreen) return;
+  const x = e.sx, y = e.sy, L = Math.max(e.pr * 2.3, 30);
+  // On-screen direction of a direction in space, at Earth.
+  const dir = v => {
+    const q = project(e.pos[0] + v[0] * 0.05, e.pos[1] + v[1] * 0.05, e.pos[2] + v[2] * 0.05);
+    if (!q) return null;
+    const dx = q.x - x, dy = q.y - y, n = Math.hypot(dx, dy);
+    return n > 1e-6 ? [dx / n, dy / n] : null;
+  };
+  const a = dir(AXIS), up = dir([0, 0, 1]);
+  if (!a || !up) return;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(x - up[0] * L, y - up[1] * L); ctx.lineTo(x + up[0] * L, y + up[1] * L); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(x - a[0] * L, y - a[1] * L); ctx.lineTo(x + a[0] * L, y + a[1] * L); ctx.stroke();
+  // The angle between them, near the top.
+  const a0 = Math.atan2(up[1], up[0]), a1 = Math.atan2(a[1], a[0]), r = L * 0.72;
+  ctx.strokeStyle = 'rgba(255, 200, 87, 0.9)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y, r, a0, a1, a1 < a0); ctx.stroke();
+  const am = (a0 + a1) / 2;
+  ctx.fillStyle = '#ffc857'; ctx.font = '600 12px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(num(23.4, 1) + '°', x + Math.cos(am) * (r + 16), y + Math.sin(am) * (r + 12));
+  ctx.textAlign = 'left';
+  ctx.lineCap = 'butt'; ctx.lineWidth = 1;
 }
 
 function drawAsteroids() {
   const d = state.days, v = [0, 0, 0];
+  ctx.globalAlpha = narrow() ? 0.35 : 1;
   for (const a of ASTEROIDS) {
     const t = a.phase + a.rate * d;
     v[0] = a.a * Math.cos(t); v[1] = a.a * Math.sin(t); v[2] = a.a * a.inc * Math.sin(t + a.node);
@@ -441,6 +628,7 @@ function drawAsteroids() {
     ctx.fillStyle = `rgb(${a.shade},${a.shade - 10},${a.shade - 25})`;
     ctx.fillRect(q.x, q.y, size, size);
   }
+  ctx.globalAlpha = 1;
 }
 
 function drawSun(b) {
@@ -515,6 +703,8 @@ function render() {
   ctx.fillRect(0, 0, W, H);
   setupCamera();
   drawStars();
+  if (lesson.on && lesson.grid) drawGrid();
+  if (lesson.on) drawPlanes();
   if (state.orbits) drawOrbits();
   drawAsteroids();
 
@@ -531,12 +721,17 @@ function render() {
     if (!q) continue;
     b.sx = q.x; b.sy = q.y; b.depth = q.d;
     b.pr = Math.max(b.minPx, b.drawR * k * q.s);
+    if (lesson.on && lesson.axis && b.id === 'Earth') b.pr = Math.max(b.pr, 12);   // big enough to see its lit half
     b.onScreen = true;
     visible.push(b);
   }
   visible.sort((a, b) => b.depth - a.depth);
   const sun = SUN.onScreen ? SUN : { sx: W / 2, sy: H / 2 };
-  for (const b of visible) drawBody(b, sun);
+  for (const b of visible) {
+    ctx.globalAlpha = faded(b) ? 0.3 : 1;
+    drawBody(b, sun);
+  }
+  ctx.globalAlpha = 1;
 
   // Selection ring and labels.
   const sel = state.selected;
@@ -545,6 +740,7 @@ function render() {
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(sel.sx, sel.sy, sel.pr + 5, 0, TAU); ctx.stroke();
   }
+  if (lesson.on) { drawNodes(); if (lesson.axis) drawAxis(); }
   if (state.labels) drawLabels(visible, sel);
 }
 
@@ -563,7 +759,7 @@ function drawLabels(visible, sel) {
     }
   }
   const rank = b => b === sel ? 0 : b.isSun ? 1 : b.isMoon ? 3 : 2;
-  const order = visible.filter(b => !(b.isMoon && b.parentBody.pr < 22)).sort((a, b) => rank(a) - rank(b));
+  const order = visible.filter(b => !(b.isMoon && b.parentBody.pr < 22) && !faded(b)).sort((a, b) => rank(a) - rank(b));
   for (const b of order) {
     const name = tr(b.name);
     ctx.font = (b.isMoon ? '11px' : '12px') + ' system-ui, sans-serif';
@@ -629,6 +825,7 @@ function buildFacts(b) {
   else {
     const years = b.period / 365.25;
     rows.push([T('period'), b.period < 1000 ? num(b.period, 1) + NB + unit(b.period, 'day') : num(years, 1) + NB + unit(years, 'year')],
+              [T('incl'), num(b.i, 1) + '°'],
               [T('dayLen'), formatDay(b.day)], [T('knownMoons'), b.moons],
               [T('distSun'), ''], [T('orbSpeed'), '']);
   }
@@ -665,8 +862,277 @@ function setPlaying(p) { state.playing = p; $('play').textContent = p ? '❚❚'
 function setDir(d) { state.dir = d; $('reverse').classList.toggle('active', d < 0); }
 function setSpeed() { state.speed = Math.pow(10, +$('speed').value); $('speedLabel').textContent = formatSpeed(state.speed); }
 function resetView() {
+  camAnim = null;
   state.yaw = 0.6; state.pitch = 38 * D2R; state.dist = DEFAULT_DIST[state.real];
   select(SUN); $('info').classList.remove('open');
+}
+function setReal(on) {
+  $('optReal').checked = on;
+  if (state.real === on) return;
+  const before = DEFAULT_DIST[state.real];
+  state.real = on;
+  state.dist *= DEFAULT_DIST[state.real] / before;
+  buildOrbitPaths();
+  updateBodies();
+  state.offset = [0, 0, 0];
+}
+
+// ───────────────────────── Camera moves ─────────────────────────
+// Each key eases yaw, pitch and dist toward the values it gives, over dur ms; a key with only
+// dur is a pause. Dragging or zooming stops the move.
+let camAnim = null;
+function cameraTo(...keys) { camAnim = { keys, i: 0, from: null }; }
+// Shortest signed turn from angle a to angle b.
+const turn = (a, b) => ((b - a) % TAU + TAU * 1.5) % TAU - Math.PI;
+function stepCamera(now) {
+  if (!camAnim) return;
+  const k = camAnim.keys[camAnim.i];
+  if (!camAnim.from) camAnim.from = { yaw: state.yaw, pitch: state.pitch, dist: state.dist, t0: now };
+  const f = camAnim.from, t = Math.min(1, (now - f.t0) / k.dur);
+  const e = t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t);
+  if (k.yaw !== undefined) state.yaw = f.yaw + turn(f.yaw, k.yaw) * e;
+  if (k.pitch !== undefined) state.pitch = f.pitch + (k.pitch - f.pitch) * e;
+  if (k.dist !== undefined) state.dist = f.dist * Math.pow(k.dist / f.dist, e);
+  if (t >= 1) {
+    camAnim.i++; camAnim.from = null;
+    if (camAnim.i >= camAnim.keys.length) camAnim = null;
+  }
+}
+
+// The part of the window the lesson panel and the controls leave free.
+function freeArea() {
+  const r = { l: 0, t: 0, r: W, b: H };
+  if (!lesson.on) return r;
+  const c = $('controls').getBoundingClientRect(), p = $('lesson').getBoundingClientRect();
+  r.b = Math.max(H * 0.45, c.top - 6);
+  if (p.left > W * 0.4) r.r = p.left - 6;           // panel in a column on the right
+  else r.t = Math.min(r.b - 80, p.bottom + 6);     // panel across the top (narrow screens)
+  return r;
+}
+function updateViewCenter(now) {
+  const a = freeArea();
+  goalX = (a.l + a.r) / 2; goalY = (a.t + a.b) / 2;
+  if (now) { CX = goalX; CY = goalY; }
+}
+// Camera distance at which a circle of radius R around the target, seen from `pitch`,
+// fits in the free area. The near side looks bigger: that is the R·cos(pitch) term.
+function fitDist(R, pitch) {
+  const a = freeArea(), w = a.r - a.l, h = a.b - a.t, m = 1.12;
+  const sp = Math.max(Math.sin(pitch), 0.12), cp = Math.cos(pitch);
+  return Math.max(2 * m * F * R / w, R * cp + 2 * m * F * R * sp / h);
+}
+
+// ───────────────────────── Lesson ─────────────────────────
+// What an orbit is, and the plane of an orbit, in six steps. Each step sets up the view
+// (camera, time, what is drawn); the controls keep working, to look around freely.
+const planet = id => PLANETS.find(p => p.id === id);
+// Farthest point of an orbit from the Sun, in compressed distances.
+const reach = p => Math.sqrt(p.a) * (1 + p.e);
+const deg = d => d * D2R;
+const ALL = PLANETS.map(p => p.id);
+// The orbits to choose from in step 5, most tilted first (Earth's is the reference).
+const TILTED = PLANETS.filter(p => p.id !== 'Earth').sort((a, b) => b.i - a.i);
+
+// Every step starts from the same base: compressed distances, no moons, orbits and names
+// shown, time running forward, the camera aimed at the Sun.
+function setScene({ speed, size = 1, focus = null, planes = [], split = [], grid = false, axis = false }) {
+  setReal(false);
+  state.orbits = state.labels = true; state.moons = false;
+  $('optOrbits').checked = $('optLabels').checked = true; $('optMoons').checked = false;
+  $('speed').value = speed; setSpeed();
+  setPlaying(true); setDir(1);
+  select(SUN);
+  Object.assign(lesson, { size, focus, planes, split, grid, axis });
+}
+
+// Step 5: show one tilted orbit, seen along its line of nodes, where its tilt is the clearest.
+function pickOrbit(id) {
+  const p = planet(id);
+  lesson.pick = id;
+  // Bodies shrink with the orbit, or the Sun would hide Mercury's.
+  const size = Math.max(0.25, Math.min(1, reach(p) / 5));
+  Object.assign(lesson, { size, focus: [id], planes: [id], split: [id] });
+  select(SUN);   // the orbit is framed around the Sun, even if another body was clicked meanwhile
+  const y0 = Math.PI / 2 - p.O * D2R, yaw = Math.abs(turn(state.yaw, y0)) <= Math.PI / 2 ? y0 : y0 + Math.PI;
+  cameraTo({ yaw, pitch: deg(12), dist: fitDist(reach(p), deg(12)), dur: 1400 });
+  showPick();
+}
+function showPick() {
+  const p = planet(lesson.pick);
+  for (const b of $('lessonPick').children) {
+    const on = b.dataset.id === p.id;
+    b.classList.toggle('active', on); b.setAttribute('aria-pressed', on);
+  }
+  $('lessonLive').textContent = T('tilted').replace('{p}', tr(p.name)).replace('{i}', num(p.i, 1) + '°');
+}
+
+// Step 6: the date, which pole leans toward the Sun, and the season. Seen from Earth, the Sun
+// is toward +x at the March equinox (ecliptic longitude 0°) and toward +y at the June
+// solstice (90°), where the axis leans. The seasons are the astronomical ones: spring in
+// the north runs from the March equinox to the June solstice, and so on.
+function seasonLine() {
+  const e = planet('Earth');
+  const lon = (Math.atan2(-e.pos[1], -e.pos[0]) + TAU) % TAU, toward = Math.sin(lon);
+  const lean = toward > 0.5 ? 0 : toward > 0.15 ? 1 : toward >= -0.15 ? 2 : toward >= -0.5 ? 3 : 4;
+  const d = new Date(J2000_MS + state.days * 864e5);
+  return `${d.getUTCDate()} ${T('months')[d.getUTCMonth()]}${lang === 'fr' ? NB : ''}: ${T('lean')[lean]} ${T('seasons')[Math.floor(lon / (Math.PI / 2)) % 4]}`;
+}
+
+const LESSON = [
+  {
+    title: { en: 'An orbit is a path', fr: 'Une orbite, c’est un chemin' },
+    text: {
+      en: ['Earth doesn’t stay still: it travels around the Sun, always along the same path. That path is called its <b>orbit</b>.',
+           'The orbit closes on itself: after a year, Earth is back where it started and begins another lap. The Sun’s gravity is what keeps it on this path.',
+           'Time is sped up here: watch Earth go all the way around.'],
+      fr: [`La Terre ne reste pas immobile${NB}: elle se déplace autour du Soleil, toujours sur le même chemin. Ce chemin s’appelle son <b>orbite</b>.`,
+           `L’orbite se referme sur elle-même${NB}: au bout d’un an, la Terre revient au même endroit et recommence un nouveau tour. C’est la gravité du Soleil qui la retient sur ce chemin.`,
+           `Ici, le temps est accéléré${NB}: regarde la Terre faire tout le tour.`],
+    },
+    scene() {
+      setScene({ speed: 1.48, size: 0.4, focus: ['Earth'] });
+      cameraTo({ yaw: 0.6, pitch: deg(55), dist: fitDist(1.15 * reach(planet('Earth')), deg(55)), dur: 1600 });
+    },
+  },
+  {
+    title: { en: 'Every planet has its own orbit', fr: 'Chaque planète a son orbite' },
+    text: {
+      en: ['Each planet follows its own orbit around the Sun. The farther out it is, the longer its orbit and the slower it moves: Mercury goes around in 88 days, Earth in one year, Neptune in 165 years.',
+           'Orbits aren’t quite circles: they are <b>ellipses</b>, slightly squashed circles, and the Sun isn’t at their centre. You can see it for Mercury and Pluto: their distance from the Sun changes a lot during one lap.',
+           'Distances are squeezed so that everything fits on the screen. Tick “Real distances” to see them as they are.'],
+      fr: [`Chaque planète suit sa propre orbite autour du Soleil. Plus elle est loin, plus son orbite est longue et plus elle avance lentement${NB}: Mercure en fait le tour en 88${NB}jours, la Terre en un an, Neptune en 165${NB}ans.`,
+           `Les orbites ne sont pas tout à fait des cercles${NB}: ce sont des <b>ellipses</b>, des cercles un peu aplatis, et le Soleil n’est pas en leur centre. Pour Mercure et Pluton, ça se voit${NB}: leur distance au Soleil change beaucoup pendant un tour.`,
+           `Les distances sont réduites pour que tout tienne à l’écran. Coche «${NB}Vraies distances${NB}» pour les voir telles qu’elles sont.`],
+    },
+    scene() {
+      setScene({ speed: 2.3, focus: ALL });
+      cameraTo({ yaw: 0.6, pitch: deg(60), dist: fitDist(reach(planet('Pluto')), deg(60)), dur: 1600 });
+    },
+  },
+  {
+    title: { en: 'An orbit is flat', fr: 'Une orbite est plate' },
+    text: {
+      en: ['Earth’s whole orbit lies on a flat surface, like the rim of a plate: this is the <b>plane of the orbit</b>, in blue. Earth never rises above it or dips below it.',
+           'Watch the view come down to the side: seen edge-on, the plane becomes a thin line, and so does the orbit.',
+           'Drag up or down to go from a view from above to a view from the side.'],
+      fr: [`Toute l’orbite de la Terre tient sur une surface plate, comme le bord d’une assiette${NB}: c’est le <b>plan de l’orbite</b>, en bleu. La Terre ne monte jamais au-dessus et ne descend jamais en dessous.`,
+           `Regarde la vue descendre sur le côté${NB}: vu par la tranche, le plan devient un simple trait, et l’orbite aussi.`,
+           'Glisse vers le haut ou vers le bas pour passer de la vue de dessus à la vue de côté.'],
+    },
+    scene() {
+      setScene({ speed: 1.48, size: 0.4, focus: ['Earth'], planes: ['Earth'] });
+      const d = fitDist(1.15 * reach(planet('Earth')), deg(55));
+      cameraTo({ yaw: 0.6, pitch: deg(55), dist: d, dur: 1000 }, { dur: 900 }, { pitch: 0, dur: 3500 });
+    },
+  },
+  {
+    title: { en: 'The plane of the ecliptic', fr: 'Le plan de l’écliptique' },
+    text: {
+      en: ['The plane of Earth’s orbit is the reference for the whole solar system: it is called the <b>ecliptic</b> (the grid). The name comes from eclipses, which can only happen when the Moon is close to this plane.',
+           'The other planets’ orbits lie almost in that same plane: seen edge-on, the solar system is nearly flat.',
+           'Why? The planets formed in a large, flat disc of gas and dust that spun around the young Sun.'],
+      fr: [`Le plan de l’orbite de la Terre sert de repère pour tout le système solaire${NB}: on l’appelle l’<b>écliptique</b> (la grille). Son nom vient des éclipses, qui ne peuvent se produire que lorsque la Lune est près de ce plan.`,
+           `Les orbites des autres planètes sont presque dans ce même plan${NB}: vu par la tranche, le système solaire est presque plat.`,
+           `Pourquoi${NB}? Les planètes se sont formées dans un grand disque plat de gaz et de poussière qui tournait autour du jeune Soleil.`],
+    },
+    scene() {
+      setScene({ speed: 2.3, focus: ALL, grid: true });
+      const yaw = Math.PI / 2 - planet('Pluto').O * D2R, d = fitDist(reach(planet('Pluto')), deg(35));
+      cameraTo({ yaw, pitch: deg(35), dist: d, dur: 1500 }, { dur: 800 }, { pitch: 0, dur: 3500 });
+    },
+  },
+  {
+    title: { en: 'Tilted orbits', fr: 'Des orbites penchées' },
+    text: {
+      en: ['The other planets’ orbits are slightly tilted with respect to the ecliptic. That angle is called the orbit’s <b>inclination</b>. Earth’s is 0°, since the ecliptic is the plane of its orbit.',
+           'A tilted orbit spends half of each lap above the ecliptic (solid line) and the other half below it (dashed). It crosses the ecliptic at two points, the <b>nodes</b> (white dots).',
+           'Pick an orbit:'],
+      fr: [`Les orbites des autres planètes sont un peu penchées par rapport à l’écliptique. Cet angle s’appelle l’<b>inclinaison</b> de l’orbite. Celle de la Terre vaut 0°, puisque l’écliptique est le plan de son orbite.`,
+           `Une orbite penchée passe une moitié du tour au-dessus de l’écliptique (trait plein) et l’autre moitié en dessous (pointillés). Elle traverse l’écliptique en deux points, les <b>nœuds</b> (les ronds blancs).`,
+           `Choisis une orbite${NB}:`],
+    },
+    pick: true,
+    scene() {
+      setScene({ speed: 3, grid: true });
+      pickOrbit(lesson.pick);
+    },
+  },
+  {
+    title: { en: 'Earth’s axis: another kind of tilt', fr: 'L’axe de la Terre, une autre inclinaison' },
+    text: {
+      en: ['Don’t mix up the tilt of an orbit with the tilt of the <b>axis</b> a planet spins around.',
+           'Earth’s orbit isn’t tilted. Its axis (the white line), however, is tilted 23.4° from the line perpendicular to the plane of the orbit (dashed).',
+           'All the way around, the axis keeps pointing the same way. So the North Pole leans toward the Sun in June and away from it in December: that is what causes the seasons.'],
+      fr: ['Ne confonds pas l’inclinaison d’une orbite avec celle de l’<b>axe</b> autour duquel une planète tourne sur elle-même.',
+           `L’orbite de la Terre n’est pas penchée. Son axe (le trait blanc), lui, est penché de 23,4° par rapport à la perpendiculaire au plan de l’orbite (les pointillés).`,
+           `Pendant tout le tour, l’axe garde la même direction. Le pôle Nord penche donc vers le Soleil en juin, et du côté opposé en décembre${NB}: c’est ce qui fait les saisons.`],
+    },
+    live: seasonLine,
+    scene() {
+      setScene({ speed: 1.48, size: 0.4, focus: ['Earth'], planes: ['Earth'], axis: true });
+      cameraTo({ yaw: -Math.PI / 2, pitch: deg(16), dist: fitDist(1.3 * reach(planet('Earth')), deg(16)), dur: 1600 });
+    },
+  },
+];
+
+let lastLive = '';
+function renderLesson() {
+  const s = LESSON[lesson.step], N = LESSON.length;
+  $('lessonStep').textContent = T('lessonStep').replace('{n}', lesson.step + 1).replace('{N}', N);
+  $('lessonTitle').textContent = tr(s.title);
+  $('lessonText').innerHTML = tr(s.text).map(p => `<p>${p}</p>`).join('');
+  $('lessonPrev').disabled = lesson.step === 0;
+  $('lessonNext').textContent = T(lesson.step === N - 1 ? 'lessonEnd' : 'lessonNext');
+  $('lessonDots').innerHTML = LESSON.map((_, k) => k === lesson.step ? '<span class="on"></span>' : '<span></span>').join('');
+  const pick = $('lessonPick');
+  pick.textContent = '';
+  lastLive = s.live ? s.live() : '';
+  $('lessonLive').textContent = lastLive;
+  if (s.pick) {
+    for (const p of TILTED) {
+      const b = document.createElement('button'), dot = document.createElement('span');
+      b.type = 'button'; b.dataset.id = p.id;
+      dot.className = 'dot'; dot.style.background = p.color;
+      b.append(dot, `${tr(p.name)} ${num(p.i, 1)}°`);
+      b.onclick = () => pickOrbit(p.id);
+      pick.append(b);
+    }
+    showPick();
+  }
+}
+function goStep(n) {
+  lesson.step = Math.max(0, Math.min(LESSON.length - 1, n));
+  renderLesson();
+  $('lesson').scrollTop = 0;
+  LESSON[lesson.step].scene();
+  updateViewCenter();
+}
+function setHash(h) {
+  try { history.replaceState(null, '', location.pathname + location.search + h); } catch (e) { /* file:// pages */ }
+}
+function openLesson() {
+  if (!lesson.on) {
+    lesson.saved = { orbits: state.orbits, labels: state.labels, moons: state.moons };
+    lesson.on = true;
+    document.body.classList.add('lesson');
+    setHash('#orbit');
+  }
+  goStep(0);
+  $('lessonTitle').focus({ preventScroll: true });
+}
+// Closing keeps the view as it is, and gives back the toggles the lesson changed.
+function closeLesson() {
+  if (!lesson.on) return;
+  lesson.on = false;
+  camAnim = null;
+  document.body.classList.remove('lesson');
+  const s = lesson.saved;
+  state.orbits = s.orbits; state.labels = s.labels; state.moons = s.moons;
+  $('optOrbits').checked = s.orbits; $('optLabels').checked = s.labels; $('optMoons').checked = s.moons;
+  $('info').classList.remove('open');
+  setHash('');
+  updateViewCenter();
+  $('lessonBtn').focus({ preventScroll: true });
 }
 
 // Switching language keeps the view, the date and the selection as they are.
@@ -683,6 +1149,7 @@ function setLang(l) {
   lb.textContent = T('langBtn'); lb.title = T('langLabel'); lb.setAttribute('aria-label', T('langLabel'));
   setSpeed();
   showInfo(state.selected);
+  if (lesson.on) { renderLesson(); updateViewCenter(); }
   Site.lang = l;
   langListeners.forEach(fn => fn(l));
 }
@@ -693,6 +1160,11 @@ $('speed').oninput = setSpeed;
 $('now').onclick = () => { state.days = (Date.now() - J2000_MS) / 864e5; };
 $('reset').onclick = resetView;
 $('langBtn').onclick = () => setLang(lang === 'fr' ? 'en' : 'fr');
+$('lessonBtn').onclick = openLesson;
+$('lessonClose').onclick = closeLesson;
+$('lessonPrev').onclick = () => goStep(lesson.step - 1);
+$('lessonNext').onclick = () => lesson.step === LESSON.length - 1 ? closeLesson() : goStep(lesson.step + 1);
+window.addEventListener('hashchange', () => location.hash === '#orbit' ? openLesson() : closeLesson());
 $('close').onclick = () => $('info').classList.remove('open');
 $('zoomTo').onclick = () => {
   const b = state.selected;
@@ -701,20 +1173,17 @@ $('zoomTo').onclick = () => {
 $('optOrbits').onchange = e => state.orbits = e.target.checked;
 $('optLabels').onchange = e => state.labels = e.target.checked;
 $('optMoons').onchange = e => state.moons = e.target.checked;
-$('optReal').onchange = e => {
-  const before = DEFAULT_DIST[state.real];
-  state.real = e.target.checked;
-  state.dist *= DEFAULT_DIST[state.real] / before;
-  buildOrbitPaths();
-  updateBodies();
-  state.offset = [0, 0, 0];
-};
+$('optReal').onchange = e => setReal(e.target.checked);
 
 window.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
   if (e.code === 'Space') { e.preventDefault(); setPlaying(!state.playing); }
   else if (e.key === 'r' || e.key === 'R') setDir(-state.dir);
-  else if (e.key === 'Escape') resetView();
+  else if (e.key === 'Escape') { if (lesson.on) closeLesson(); else resetView(); }
+  else if (lesson.on && e.target.type !== 'range' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+    const n = lesson.step + (e.key === 'ArrowRight' ? 1 : -1);
+    if (n >= 0 && n < LESSON.length) goStep(n);
+  }
 });
 
 // Pointer input: drag to orbit, pinch / wheel to zoom, click to pick.
@@ -724,6 +1193,7 @@ const clampDist = d => Math.max(0.02, Math.min(600, d));
 
 canvas.addEventListener('pointerdown', e => {
   canvas.setPointerCapture(e.pointerId);
+  camAnim = null;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 1) moved = 0;
   if (pointers.size === 2) {
@@ -741,7 +1211,7 @@ canvas.addEventListener('pointermove', e => {
   if (pointers.size === 1) {
     moved += Math.abs(dx) + Math.abs(dy);
     state.yaw -= dx * 0.006;
-    state.pitch = Math.max(3 * D2R, Math.min(90 * D2R, state.pitch + dy * 0.006));
+    state.pitch = Math.max(0, Math.min(90 * D2R, state.pitch + dy * 0.006));
   } else if (pointers.size === 2 && pinchStart > 0) {
     const [a, b] = [...pointers.values()];
     state.dist = clampDist(pinchDist * pinchStart / Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)));
@@ -759,6 +1229,7 @@ canvas.addEventListener('pointerup', pointerEnd);
 canvas.addEventListener('pointercancel', pointerEnd);
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
+  camAnim = null;
   const delta = e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY;
   state.dist = clampDist(state.dist * Math.exp(delta * 0.0012));
   $('hint').style.opacity = 0;
@@ -784,6 +1255,10 @@ function frame(now) {
   last = now;
   if (state.playing) state.days += state.dir * state.speed * dt;
   updateBodies();
+  stepCamera(now);
+  const glide = Math.min(1, dt * 6);
+  CX += (goalX - CX) * glide; CY += (goalY - CY) * glide;
+  lessonSize += ((lesson.on ? lesson.size : 1) - lessonSize) * glide;
 
   const b = state.selected, o = state.offset, decay = Math.pow(0.002, dt);
   o[0] *= decay; o[1] *= decay; o[2] *= decay;
@@ -792,6 +1267,11 @@ function frame(now) {
   render();
   $('date').textContent = formatDate(state.days);
   updateLiveFacts();
+  const live = lesson.on && LESSON[lesson.step].live;
+  if (live) {
+    const t = live();
+    if (t !== lastLive) $('lessonLive').textContent = lastLive = t;
+  }
   requestAnimationFrame(frame);
 }
 
@@ -799,6 +1279,7 @@ setLang(lang);
 updateBodies();
 select(SUN);
 $('info').classList.remove('open');
+if (location.hash === '#orbit') openLesson();
 requestAnimationFrame(frame);
 </script>
 </body>
