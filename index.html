@@ -195,7 +195,7 @@ const STR = {
     hour: 'hours', hours: 'hours', day: 'days', days: 'days', year: 'years', years: 'years',
     retro: ' (retrograde)', au: 'AU', mkm: 'M km',
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    lessonBtn: 'Lesson: orbits', lessonBtnTitle: 'A step-by-step lesson: what an orbit is, and the plane of an orbit',
+    lessonBtn: 'Lesson: orbits', lessonBtnTitle: 'A step-by-step lesson: what an orbit is, the plane of an orbit, and the seasons',
     lessonClose: 'Close the lesson', lessonStep: 'Lesson · step {n} of {N}',
     lessonPrev: '← Back', lessonNext: 'Next →', lessonEnd: 'Finish',
     tilted: '{p}: orbit tilted {i} to the ecliptic.',
@@ -204,6 +204,9 @@ const STR = {
            'the South Pole leans a little toward the Sun.', 'the South Pole leans toward the Sun.'],
     seasons: ['Spring in the north, autumn in the south.', 'Summer in the north, winter in the south.',
               'Autumn in the north, spring in the south.', 'Winter in the north, summer in the south.'],
+    // Landmarks on Earth's orbit, named for the Northern Hemisphere, in the order of the Sun's
+    // ecliptic longitude 0°, 90°, 180°, 270°.
+    marks: ['Spring equinox · Mar 20', 'Summer solstice · Jun 21', 'Autumn equinox · Sep 22', 'Winter solstice · Dec 21'],
   },
   fr: {
     title: 'Le système solaire', heading: 'Système solaire',
@@ -221,7 +224,7 @@ const STR = {
     hour: 'heure', hours: 'heures', day: 'jour', days: 'jours', year: 'an', years: 'ans',
     retro: ' (rétrograde)', au: 'UA', mkm: 'millions de km',
     months: ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'],
-    lessonBtn: 'Leçon : les orbites', lessonBtnTitle: 'Une leçon pas à pas : ce qu’est une orbite, et le plan d’une orbite',
+    lessonBtn: 'Leçon : les orbites', lessonBtnTitle: 'Une leçon pas à pas : ce qu’est une orbite, le plan d’une orbite, et les saisons',
     lessonClose: 'Fermer la leçon', lessonStep: 'Leçon · étape {n} sur {N}',
     lessonPrev: '← Précédent', lessonNext: 'Suivant →', lessonEnd: 'Terminer',
     tilted: `{p}${NB}: orbite penchée de {i} sur l’écliptique.`,
@@ -230,6 +233,7 @@ const STR = {
            'le pôle Sud penche un peu vers le Soleil.', 'le pôle Sud penche vers le Soleil.'],
     seasons: ['C’est le printemps au nord, l’automne au sud.', 'C’est l’été au nord, l’hiver au sud.',
               'C’est l’automne au nord, le printemps au sud.', 'C’est l’hiver au nord, l’été au sud.'],
+    marks: ['Équinoxe de printemps · 20 mars', 'Solstice d’été · 21 juin', 'Équinoxe d’automne · 22 sept.', 'Solstice d’hiver · 21 déc.'],
   },
 };
 const T = k => STR[lang][k];
@@ -392,6 +396,8 @@ const lesson = {
   split: [],      // ids of the orbits drawn solid above the ecliptic and dashed below, with their nodes
   grid: false,    // the ecliptic as a grid
   axis: false,    // Earth's spin axis and the perpendicular to its orbit
+  angle: false,   // the 23.4° between them, marked (only true to the eye when seen from the side)
+  marks: false,   // the solstices and equinoxes on Earth's orbit
 };
 let W = 0, H = 0, DPR = 1, F = 1;
 // Screen point the camera target is drawn at: the middle of the window, or of the part the
@@ -580,6 +586,45 @@ function drawNodes() {
   ctx.lineWidth = 1;
 }
 
+// The solstices and equinoxes on Earth's orbit. The Sun, seen from Earth, is at ecliptic
+// longitude 0° at the March equinox, 90° at the June solstice, and so on: Earth itself is
+// then on the opposite side, at heliocentric longitude 180°, 270°, 0°, 90°.
+function drawMarks() {
+  const idx = PLANETS.findIndex(p => p.id === 'Earth'), pts = orbitPaths[idx];
+  ctx.font = '600 12px system-ui, sans-serif';
+  ctx.textBaseline = 'middle';
+  T('marks').forEach((label, k) => {
+    const want = (k * 90 + 180) * D2R;
+    let best = 0, bestD = Infinity;
+    for (let j = 0; j < pts.length; j += 3) {
+      const d = Math.abs(turn(Math.atan2(pts[j + 1], pts[j]), want));
+      if (d < bestD) { bestD = d; best = j; }
+    }
+    const q = project(pts[best], pts[best + 1], pts[best + 2]);
+    if (!q) return;
+    const x = q.x, y = q.y;
+    // Label pushed away from the Sun, on screen.
+    const sun = SUN.onScreen ? SUN : { sx: CX, sy: CY };
+    let dx = x - sun.sx, dy = y - sun.sy;
+    const n = Math.hypot(dx, dy) || 1; dx /= n; dy /= n;
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, TAU);
+    ctx.fillStyle = '#04060c'; ctx.fill();
+    ctx.strokeStyle = '#ffc857'; ctx.lineWidth = 2; ctx.stroke();
+    const w = ctx.measureText(label).width;
+    let lx = x + dx * 14 - (dx < -0.3 ? w : dx > 0.3 ? 0 : w / 2), ly = y + dy * 16;
+    // Narrow screens: a label that doesn't fit beside its mark goes under it, kept on screen.
+    if (lx < 6 || lx + w > W - 6) {
+      lx = Math.max(6, Math.min(W - 6 - w, x - w / 2));
+      ly = y + 18;
+    }
+    ctx.fillStyle = 'rgba(4, 6, 12, 0.75)';
+    ctx.fillRect(lx - 4, ly - 9, w + 8, 18);
+    ctx.fillStyle = '#ffc857';
+    ctx.fillText(label, lx, ly);
+  });
+  ctx.lineWidth = 1;
+}
+
 // Earth's spin axis, which keeps the same direction in space (23.44° from the perpendicular
 // to the orbit, leaning toward the Sun at the June solstice), and that perpendicular, dashed.
 const OBLIQUITY = 23.44 * D2R;
@@ -603,6 +648,7 @@ function drawAxis() {
   ctx.setLineDash([]);
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(x - a[0] * L, y - a[1] * L); ctx.lineTo(x + a[0] * L, y + a[1] * L); ctx.stroke();
+  if (!lesson.angle) { ctx.lineCap = 'butt'; ctx.lineWidth = 1; return; }
   // The angle between them, near the top.
   const a0 = Math.atan2(up[1], up[0]), a1 = Math.atan2(a[1], a[0]), r = L * 0.72;
   ctx.strokeStyle = 'rgba(255, 200, 87, 0.9)'; ctx.lineWidth = 1.5;
@@ -740,7 +786,7 @@ function render() {
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(sel.sx, sel.sy, sel.pr + 5, 0, TAU); ctx.stroke();
   }
-  if (lesson.on) { drawNodes(); if (lesson.axis) drawAxis(); }
+  if (lesson.on) { drawNodes(); if (lesson.marks) drawMarks(); if (lesson.axis) drawAxis(); }
   if (state.labels) drawLabels(visible, sel);
 }
 
@@ -923,7 +969,7 @@ function fitDist(R, pitch) {
 }
 
 // ───────────────────────── Lesson ─────────────────────────
-// What an orbit is, and the plane of an orbit, in six steps. Each step sets up the view
+// What an orbit is, the plane of an orbit, and the seasons, in seven steps. Each step sets up the view
 // (camera, time, what is drawn); the controls keep working, to look around freely.
 const planet = id => PLANETS.find(p => p.id === id);
 // Farthest point of an orbit from the Sun, in compressed distances.
@@ -935,14 +981,14 @@ const TILTED = PLANETS.filter(p => p.id !== 'Earth').sort((a, b) => b.i - a.i);
 
 // Every step starts from the same base: compressed distances, no moons, orbits and names
 // shown, time running forward, the camera aimed at the Sun.
-function setScene({ speed, size = 1, focus = null, planes = [], split = [], grid = false, axis = false }) {
+function setScene({ speed, size = 1, focus = null, planes = [], split = [], grid = false, axis = false, angle = false, marks = false }) {
   setReal(false);
   state.orbits = state.labels = true; state.moons = false;
   $('optOrbits').checked = $('optLabels').checked = true; $('optMoons').checked = false;
   $('speed').value = speed; setSpeed();
   setPlaying(true); setDir(1);
   select(SUN);
-  Object.assign(lesson, { size, focus, planes, split, grid, axis });
+  Object.assign(lesson, { size, focus, planes, split, grid, axis, angle, marks });
 }
 
 // Step 5: show one tilted orbit, seen along its line of nodes, where its tilt is the clearest.
@@ -983,10 +1029,10 @@ const LESSON = [
     title: { en: 'An orbit is a path', fr: 'Une orbite, c’est un chemin' },
     text: {
       en: ['Earth doesn’t stay still: it travels around the Sun, always along the same path. That path is called its <b>orbit</b>.',
-           'The orbit closes on itself: after a year, Earth is back where it started and begins another lap. The Sun’s gravity is what keeps it on this path.',
+           'The orbit closes on itself: after a year, Earth is back where it started and begins another lap. One full trip around the Sun is called a <b>revolution</b>. The Sun’s gravity is what keeps Earth on this path.',
            'Time is sped up here: watch Earth go all the way around.'],
       fr: [`La Terre ne reste pas immobile${NB}: elle se déplace autour du Soleil, toujours sur le même chemin. Ce chemin s’appelle son <b>orbite</b>.`,
-           `L’orbite se referme sur elle-même${NB}: au bout d’un an, la Terre revient au même endroit et recommence un nouveau tour. C’est la gravité du Soleil qui la retient sur ce chemin.`,
+           `L’orbite se referme sur elle-même${NB}: au bout d’un an, la Terre revient au même endroit et recommence un nouveau tour. Un tour complet autour du Soleil s’appelle une <b>révolution</b>. C’est la gravité du Soleil qui retient la Terre sur ce chemin.`,
            `Ici, le temps est accéléré${NB}: regarde la Terre faire tout le tour.`],
     },
     scene() {
@@ -1060,17 +1106,37 @@ const LESSON = [
   {
     title: { en: 'Earth’s axis: another kind of tilt', fr: 'L’axe de la Terre, une autre inclinaison' },
     text: {
-      en: ['Don’t mix up the tilt of an orbit with the tilt of the <b>axis</b> a planet spins around.',
-           'Earth’s orbit isn’t tilted. Its axis (the white line), however, is tilted 23.4° from the line perpendicular to the plane of the orbit (dashed).',
-           'All the way around, the axis keeps pointing the same way. So the North Pole leans toward the Sun in June and away from it in December: that is what causes the seasons.'],
-      fr: ['Ne confonds pas l’inclinaison d’une orbite avec celle de l’<b>axe</b> autour duquel une planète tourne sur elle-même.',
-           `L’orbite de la Terre n’est pas penchée. Son axe (le trait blanc), lui, est penché de 23,4° par rapport à la perpendiculaire au plan de l’orbite (les pointillés).`,
-           `Pendant tout le tour, l’axe garde la même direction. Le pôle Nord penche donc vers le Soleil en juin, et du côté opposé en décembre${NB}: c’est ce qui fait les saisons.`],
+      en: ['Don’t mix up the tilt of an orbit with the tilt of the <b>axis</b> a planet spins around. Spinning on its axis is called <b>rotation</b>: Earth makes one rotation a day.',
+           'Earth’s orbit isn’t tilted. Its axis (the white line), however, is tilted 23.4° from the line perpendicular to the plane of the orbit (dashed). Some books round it to 23.5°: it is the same angle, 23.44°.',
+           'All through its revolution, the axis keeps pointing the same way. So the North Pole leans toward the Sun in June and away from it in December: that is what causes the seasons.'],
+      fr: [`Ne confonds pas l’inclinaison d’une orbite avec celle de l’<b>axe</b> autour duquel une planète tourne sur elle-même. Ce mouvement-là s’appelle la <b>rotation</b>${NB}: la Terre fait une rotation par jour.`,
+           `L’orbite de la Terre n’est pas penchée. Son axe (le trait blanc), lui, est penché de 23,4° par rapport à la perpendiculaire au plan de l’orbite (les pointillés). Certains livres arrondissent à 23,5°${NB}: c’est le même angle, 23,44°.`,
+           `Pendant toute sa révolution, l’axe garde la même direction. Le pôle Nord penche donc vers le Soleil en juin, et du côté opposé en décembre${NB}: c’est ce qui fait les saisons.`],
     },
     live: seasonLine,
     scene() {
-      setScene({ speed: 1.48, size: 0.4, focus: ['Earth'], planes: ['Earth'], axis: true });
+      setScene({ speed: 1.48, size: 0.4, focus: ['Earth'], planes: ['Earth'], axis: true, angle: true });
       cameraTo({ yaw: -Math.PI / 2, pitch: deg(16), dist: fitDist(1.3 * reach(planet('Earth')), deg(16)), dur: 1600 });
+    },
+  },
+  {
+    title: { en: 'Solstices and equinoxes', fr: 'Solstices et équinoxes' },
+    text: {
+      en: ['Four moments in Earth’s revolution are landmarks. Their names are for the Northern Hemisphere.',
+           '<b>Summer solstice</b>, June 20 or 21: the North Pole leans toward the Sun. It is the longest day of the year, and summer begins.',
+           '<b>Winter solstice</b>, December 21 or 22: the North Pole leans away from the Sun. It is the shortest day, and winter begins.',
+           '<b>Spring equinox</b>, March 20 or 21, and <b>autumn equinox</b>, September 22 or 23: neither pole leans toward the Sun, and day and night last about 12 hours each, everywhere.',
+           'And the distance from the Sun? Earth is closest in early January, in the middle of the northern winter. So distance isn’t what makes the seasons: in summer the Sun’s rays come in more steeply and the days are longer; in winter the rays come in at a low angle and the days are short.'],
+      fr: ['Quatre moments de la révolution de la Terre servent de repères. Leurs noms sont ceux de l’hémisphère Nord.',
+           `<b>Solstice d’été</b>, le 20 ou le 21 juin${NB}: le pôle Nord penche vers le Soleil. C’est le jour le plus long de l’année, et l’été commence.`,
+           `<b>Solstice d’hiver</b>, le 21 ou le 22 décembre${NB}: le pôle Nord penche du côté opposé. C’est le jour le plus court, et l’hiver commence.`,
+           `<b>Équinoxe de printemps</b>, le 20 ou le 21 mars, et <b>équinoxe d’automne</b>, le 22 ou le 23 septembre${NB}: aucun pôle ne penche vers le Soleil, et le jour et la nuit durent chacun à peu près 12 heures, partout.`,
+           `Et la distance au Soleil${NB}? La Terre en est au plus près début janvier, en plein hiver au nord. Ce n’est donc pas elle qui fait les saisons${NB}: en été, les rayons du Soleil arrivent plus droit et les jours sont plus longs${NB}; en hiver, les rayons arrivent rasants et les jours sont courts.`],
+    },
+    live: seasonLine,
+    scene() {
+      setScene({ speed: 1.48, size: 0.4, focus: ['Earth'], planes: ['Earth'], axis: true, marks: true });
+      cameraTo({ yaw: -Math.PI / 2, pitch: deg(42), dist: fitDist(1.45 * reach(planet('Earth')), deg(42)), dur: 1600 });
     },
   },
 ];

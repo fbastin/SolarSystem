@@ -10,7 +10,7 @@ An interactive solar system simulation in a single, dependency-free HTML file.
 - Drag to rotate, scroll or pinch to zoom, click a body to follow it
 - Time controls: play/pause (Space), reverse (R), speed from hours to years per second
 - Toggles for orbits, labels, moons, and real vs. compressed distances
-- A six-step lesson on what an orbit is and the plane of an orbit: ellipses, the ecliptic, inclination and nodes, and how Earth's axial tilt differs from the tilt of an orbit. Open it with the Lesson button, or with `#orbit` at the end of the address
+- A seven-step lesson on what an orbit is and the plane of an orbit: revolution and rotation, ellipses, the ecliptic, inclination and nodes, how Earth's axial tilt differs from the tilt of an orbit, and the solstices and equinoxes. Open it with the Lesson button, or with `#orbit` at the end of the address
 - In English and in French: `?lang=en` or `?lang=fr` in the URL, otherwise the FR/EN button's last choice, otherwise the browser's language
 
 Body sizes and moon orbit radii are exaggerated for visibility.
